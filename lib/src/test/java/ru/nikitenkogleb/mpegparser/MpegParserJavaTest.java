@@ -1,6 +1,6 @@
 /*
- * ExampleTest.java
- * lib
+ * ExampleUnitTest.java
+ * app
  *
  * The MIT License (MIT)
  *
@@ -28,33 +28,18 @@
 package ru.nikitenkogleb.mpegparser;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
-import android.support.test.runner.AndroidJUnit4;
+import static org.junit.Assert.assertEquals;
 
 /**
- * Instrumentation test, which will execute on an Android device.
+ * Example local unit test, which will execute on the development machine (host).
  *
  * @see <a href="http://d.android.com/tools/testing">Testing documentation</a>
  */
-@SuppressWarnings("unused")
-@RunWith(AndroidJUnit4.class)
-public class ExampleTest {
+public class MpegParserJavaTest {
 
-    /** The log-cat tag */
-    private static final String TAG = "ExampleTest";
-
-    /** Test something. */
     @Test
-    public final void simple() {
-        /*try {Thread.sleep(800);} catch (InterruptedException e) {Log.w(TAG, e);}
-        TestUtils.rotateOrientation(mActivityTestRule.getActivity());
-        try {Thread.sleep(800);} catch (InterruptedException e) {Log.w(TAG, e);}
-        TestUtils.rotateOrientation(mActivityTestRule.getActivity());
-        try {Thread.sleep(800);} catch (InterruptedException e) {Log.w(TAG, e);}
-        TestUtils.rotateOrientation(mActivityTestRule.getActivity());
-        try {Thread.sleep(800);} catch (InterruptedException e) {Log.w(TAG, e);}
-        // test commit
-        LoaderTestCase ltc;*/
+    public void addition_isCorrect() throws Exception {
+        assertEquals(4, 2 + 2);
     }
 }
