@@ -25,7 +25,7 @@
  * SOFTWARE.
  */
 
-package ru.nikitenkogleb;
+package ru.nikitenkogleb.mpegparser;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
