@@ -29,8 +29,6 @@ package ru.nikitenkogleb.mpegparser;
 
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-
 /**
  * Example local unit test, which will execute on the development machine (host).
  *
@@ -38,8 +36,9 @@ import static org.junit.Assert.assertEquals;
  */
 public class MpegParserJavaTest {
 
+    /** Empty Java Test */
     @Test
-    public void addition_isCorrect() throws Exception {
-        assertEquals(4, 2 + 2);
+    public final void emptyTest() throws Exception {
+
     }
 }

@@ -42,6 +42,7 @@ buildscript {
 allprojects {
     repositories {
         jcenter()
+        maven { url myMavenRepoReadUrl }
     }
     tasks.withType(JavaCompile) {
         options.compilerArgs << "-Xlint:deprecation"
