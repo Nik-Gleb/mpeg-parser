@@ -32,7 +32,7 @@ apply plugin: 'com.getkeepsafe.dexcount'
 /*================== DECLARATIONS =====================*/
 
 def final int MIN_SDK_MAIN = 16
-def final String VERSION_NAME = '0.0.1'
+def final String VERSION_NAME = '0.0.2'
 def final int SDK_VER = Integer.parseInt(sdkVer)
 /*=====================================================*/
 

@@ -26,7 +26,7 @@
 
 #-dontobfuscate
 #-dontoptimize
--dontshrink
+#-dontshrink
 
 -verbose
 -optimizationpasses 5
