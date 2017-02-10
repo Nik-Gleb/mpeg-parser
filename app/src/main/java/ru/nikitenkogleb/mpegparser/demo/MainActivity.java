@@ -27,24 +27,24 @@
 
 package ru.nikitenkogleb.mpegparser.demo;
 
+import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.AnimationDrawable;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.AppCompatImageView;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 
@@ -63,6 +63,10 @@ public final class MainActivity extends AppCompatActivity {
 
     /** The log-cat tag. */
     private static final String TAG = "MainActivity";
+
+    /** Remote video url */
+    private static final String REMOTE_VIDEO =
+            "http://www.sample-videos.com/video/mp4/240/big_buck_bunny_240p_1mb.mp4";
 
     /** The content view. */
     @Nullable
@@ -144,6 +148,9 @@ public final class MainActivity extends AppCompatActivity {
         /** The asset manager. */
         private final AssetManager mAssetManager;
 
+        /** The application context. */
+        private final Context mContext;
+
         /** The duration of frames. */
         private final int mFrameDuration;
 
@@ -161,6 +168,7 @@ public final class MainActivity extends AppCompatActivity {
             mMainActivityWeakReference = new WeakReference<>(activity);
             mAssetManager = activity.getAssets();
             mFrameDuration = duration;
+            mContext = activity.getApplicationContext();
             execute();
         }
 
@@ -175,14 +183,17 @@ public final class MainActivity extends AppCompatActivity {
         /** {@inheritDoc} */
         @Override
         protected final Boolean doInBackground(Void... params) {
-            try {
+            final Uri uri = Uri.parse(REMOTE_VIDEO);
+            return MpegParser.extract(mContext, uri, null, this);
+
+            /*try {
                 return MpegParser.extract(mAssetManager.openFd("input.mp4"), this);
             } catch (IOException exception) {
                 if (Log.isLoggable(TAG, Log.WARN)) {
                     Log.w(TAG, exception);
                 }
             }
-            return false;
+            return false;*/
         }
 
         /** {@inheritDoc} */
