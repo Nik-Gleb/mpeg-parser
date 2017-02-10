@@ -179,13 +179,12 @@ final class TextureRender {
     }
 
     /** Draws the external texture in SurfaceTexture onto the current EGL surface. */
-    final void drawFrame(SurfaceTexture st, boolean invert) {
+    final void drawFrame(@NonNull SurfaceTexture surfaceTexture) {
         checkGlError("onDrawFrame start");
-        st.getTransformMatrix(mSTMatrix);
-        if (invert) {
-            mSTMatrix[5] = -mSTMatrix[5];
-            mSTMatrix[13] = 1.0f - mSTMatrix[13];
-        }
+        surfaceTexture.getTransformMatrix(mSTMatrix);
+
+        mSTMatrix[5] = -mSTMatrix[5];
+        mSTMatrix[13] = 1.0f - mSTMatrix[13];
 
         // (optional) clear to green so we can see if we're failing to set pixels
         GLES20.glClearColor(0.0f, 1.0f, 0.0f, 1.0f);

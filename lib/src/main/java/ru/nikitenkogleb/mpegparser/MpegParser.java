@@ -1,18 +1,17 @@
 package ru.nikitenkogleb.mpegparser;
 
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.net.Uri;
-import android.os.ParcelFileDescriptor;
+import android.opengl.GLES20;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -29,14 +28,14 @@ import proguard.annotation.KeepPublicProtectedClassMembers;
  */
 @Keep
 @KeepPublicProtectedClassMembers
-@SuppressWarnings("WeakerAccess, unused")
+@SuppressWarnings({"WeakerAccess, unused", "deprecation"})
 public final class MpegParser {
 
     /** The log-cat tag. */
     private static final String TAG = "MpegParser";
 
     /** Stop extracting after this many. */
-    private static final int MAX_FRAMES = 10;
+    private static final int MAX_FRAMES = 1000;
 
     /**
      * The caller should be prevented from constructing objects of this class.
@@ -63,46 +62,7 @@ public final class MpegParser {
         final MediaExtractor mediaExtractor = new MediaExtractor();
         try {
             mediaExtractor.setDataSource(context, uri, headers);
-
-            final int trackIndex = selectTrack(mediaExtractor);
-            if (trackIndex < 0) {
-                if (Log.isLoggable(TAG, Log.WARN)) {
-                    Log.w(TAG, "No video track found in " + uri);
-                }
-                return false;
-            }
-
-            mediaExtractor.selectTrack(trackIndex);
-
-            final MediaFormat format = mediaExtractor.getTrackFormat(trackIndex);
-            final int width = format.getInteger(MediaFormat.KEY_WIDTH);
-            final int height = format.getInteger(MediaFormat.KEY_HEIGHT);
-            if (Log.isLoggable(TAG, Log.DEBUG)) {
-                Log.d(TAG, "Video size is " + width + "x" + height);
-            }
-
-            // Could use width/height from the MediaFormat to get full-size frames.
-            final CodecOutputSurface outputSurface = new CodecOutputSurface(width, height);
-            try {
-                // Create a MediaCodec decoder, and configure it with the MediaFormat from the
-                // extractor.  It's very important to use the format from the extractor because
-                // it contains a copy of the CSD-0/CSD-1 codec-specific data chunks.
-                final String mime = format.getString(MediaFormat.KEY_MIME);
-                final MediaCodec decoder = MediaCodec.createDecoderByType(mime);
-                decoder.configure(format, outputSurface.mSurface, null, 0);
-                decoder.start();
-
-                try {
-                    doExtract(mediaExtractor, trackIndex, decoder, outputSurface, encoder);
-                } finally {
-                    decoder.stop();
-                    decoder.release();
-                }
-
-            } finally {
-                outputSurface.release();
-            }
-
+            extract(mediaExtractor, encoder);
             return true;
         } catch (IOException exception) {
             if (Log.isLoggable(TAG, Log.WARN)) {
@@ -114,6 +74,87 @@ public final class MpegParser {
         }
     }
 
+    /**
+     * Extract process.
+     *
+     * @param afd     asset file descriptor
+     * @param encoder output data
+     * @return true - by successful, otherwise - false
+     */
+    public static boolean extract(@NonNull AssetFileDescriptor afd,
+            @NonNull FramesEncoder encoder) {
+        final MediaExtractor mediaExtractor = new MediaExtractor();
+        try {
+            if (afd.getDeclaredLength() < 0) {
+                mediaExtractor.setDataSource(afd.getFileDescriptor(), 0, 0x7ffffffffffffffL);
+            } else {
+                mediaExtractor.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(),
+                        afd.getDeclaredLength());
+            }
+            extract(mediaExtractor, encoder);
+            return true;
+        } catch (IOException exception) {
+            if (Log.isLoggable(TAG, Log.WARN)) {
+                Log.w(TAG, exception);
+            }
+            return false;
+        } finally {
+            mediaExtractor.release();
+        }
+    }
+
+    /**
+     * Do extracting.
+     *
+     * @param mediaExtractor the media extractor
+     * @param encoder        the encoder
+     * @throws IOException the IO Throws
+     */
+    private static void extract(
+            @NonNull MediaExtractor mediaExtractor,
+            @NonNull FramesEncoder encoder) throws IOException {
+
+        final int trackIndex = selectTrack(mediaExtractor);
+        if (trackIndex < 0) {
+            if (Log.isLoggable(TAG, Log.WARN)) {
+                Log.w(TAG, "No video track found in source");
+            }
+            return;
+        }
+
+        mediaExtractor.selectTrack(trackIndex);
+
+        final MediaFormat format = mediaExtractor.getTrackFormat(trackIndex);
+        final int width = format.getInteger(MediaFormat.KEY_WIDTH);
+        final int height = format.getInteger(MediaFormat.KEY_HEIGHT);
+
+        if (Log.isLoggable(TAG, Log.DEBUG)) {
+            Log.d(TAG, "Video size is " + width + "x" + height);
+        }
+
+        // Could use width/height from the MediaFormat to get full-size frames.
+        final CodecOutputSurface outputSurface = new CodecOutputSurface(width, height);
+        try {
+            // Create a MediaCodec decoder, and configure it with the MediaFormat from the
+            // extractor.  It's very important to use the format from the extractor because
+            // it contains a copy of the CSD-0/CSD-1 codec-specific data chunks.
+            final String mime = format.getString(MediaFormat.KEY_MIME);
+            final MediaCodec decoder = MediaCodec.createDecoderByType(mime);
+            decoder.configure(format, outputSurface.mSurface, null, 0);
+            decoder.start();
+
+            try {
+                doExtract(mediaExtractor, trackIndex, decoder, outputSurface, encoder, width,
+                        height);
+            } finally {
+                decoder.stop();
+                decoder.release();
+            }
+
+        } finally {
+            outputSurface.release();
+        }
+    }
 
     /**
      * Selects the video track, if any.
@@ -141,10 +182,10 @@ public final class MpegParser {
     /** Work loop. */
     static void doExtract(@NonNull MediaExtractor extractor, int trackIndex,
             @NonNull MediaCodec decoder, @NonNull CodecOutputSurface outputSurface,
-            @NonNull FramesEncoder encoder) throws IOException {
+            @NonNull FramesEncoder encoder, int width, int height) throws IOException {
 
         final int TIMEOUT_USEC = 10000;
-        //noinspection deprecation
+
         final ByteBuffer[] decoderInputBuffers = decoder.getInputBuffers();
         final MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
 
@@ -214,7 +255,7 @@ public final class MpegParser {
                     if (Log.isLoggable(TAG, Log.DEBUG)) {
                         Log.d(TAG, "no output from decoder available");
                     }
-                } else //noinspection deprecation
+                } else
                     if (decoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
 
                         // not important for us, since we're using Surface
@@ -260,16 +301,54 @@ public final class MpegParser {
                             }
 
                             outputSurface.awaitNewImage();
-                            outputSurface.drawImage(true);
+                            outputSurface.drawImage();
 
                             if (decodeCount < MAX_FRAMES) {
                                 final long startWhen = System.nanoTime();
 
-                                encoder.onFrameExtracted(decodeCount, outputSurface.mPixelBuf);
+                                // glReadPixels gives us a ByteBuffer filled with what is essentially big-endian RGBA
+                                // data (i.e. a byte of red, followed by a byte of green...).  To use the Bitmap
+                                // constructor that takes an int[] array with pixel data, we need an int[] filled
+                                // with little-endian ARGB data.
+                                //
+                                // If we implement this as a series of buf.get() calls, we can spend 2.5 seconds just
+                                // copying data around for a 720p frame.  It's better to do a bulk get() and then
+                                // rearrange the data in memory.  (For comparison, the PNG compress takes about 500ms
+                                // for a trivial frame.)
+                                //
+                                // So... we set the ByteBuffer to little-endian, which should turn the bulk IntBuffer
+                                // get() into a straight memcpy on most Android devices.  Our ints will hold ABGR data.
+                                // Swapping B and R gives us ARGB.  We need about 30ms for the bulk get(), and another
+                                // 270ms for the color swap.
+                                //
+                                // We can avoid the costly B/R swap here if we do it in the fragment shader (see
+                                // http://stackoverflow.com/questions/21634450/ ).
+                                //
+                                // Having said all that... it turns out that the Bitmap#copyPixelsFromBuffer()
+                                // method wants RGBA pixels, not ARGB, so if we create an empty bitmap and then
+                                // copy pixel data in we can avoid the swap issue entirely, and just copy straight
+                                // into the Bitmap from the ByteBuffer.
+                                //
+                                // Making this even more interesting is the upside-down nature of GL, which means
+                                // our output will look upside-down relative to what appears on screen if the
+                                // typical GL conventions are used.  (For ExtractMpegFrameTest, we avoid the issue
+                                // by inverting the frame when we render it.)
+                                //
+                                // Allocating large buffers is expensive, so we really want mPixelBuf to be
+                                // allocated ahead of time if possible.  We still get some allocations from the
+                                // Bitmap / PNG creation.
+
+                                outputSurface.mPixelBuf.rewind();
+                                GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA,
+                                        GLES20.GL_UNSIGNED_BYTE, outputSurface.mPixelBuf);
+                                outputSurface.mPixelBuf.rewind();
+
+                                encoder.onFrameExtracted(decodeCount, outputSurface.mPixelBuf, width, height);
 
                                 frameSaveTime += System.nanoTime() - startWhen;
                             }
                             decodeCount++;
+
                         }
                     }
             }
@@ -282,36 +361,13 @@ public final class MpegParser {
         }
     }
 
-
-    /**
-     * Converting process.
-     *
-     * @param inputStream  input data
-     * @param outputStream output data
-     */
-    @SuppressWarnings("UnusedAssignment")
-    public static void convert1(@NonNull InputStream inputStream, @NonNull OutputStream
-            outputStream) {
-        try {
-            final ParcelFileDescriptor[] input = ParcelFileDescriptor.createPipe();
-            final ParcelFileDescriptor[] output = ParcelFileDescriptor.createPipe();
-            final ParcelFileDescriptor clientRead = input[0];
-            final ParcelFileDescriptor clientWrite = output[1];
-
-            final ParcelFileDescriptor serverWrite = input[1];
-            final ParcelFileDescriptor serverRead = input[0];
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     /** Frames encoder */
+    @Keep
+    @KeepPublicProtectedClassMembers
     public interface FramesEncoder {
 
         /** Calls by extract frame */
-        void onFrameExtracted(int count, @NonNull ByteBuffer byteBuffer);
+        void onFrameExtracted(int count, @NonNull ByteBuffer byteBuffer, int width, int height);
 
     }
 

@@ -76,7 +76,13 @@ final class CodecOutputSurface implements SurfaceTexture.OnFrameAvailableListene
 
         // Initialize OpenGL
         mEGLSurface = createSurface(mEgl, mEGLDisplay, mConfigs[0], width, height);
-        checkEglError("eglCreatePBufferSurface");
+
+        int error;
+        if ((error = mEgl.eglGetError()) != EGL10.EGL_SUCCESS) {
+            throw new RuntimeException(
+                    "eglCreatePBufferSurface: EGL error: 0x" + Integer.toHexString(error));
+        }
+
         if (mEGLSurface == null) {
             throw new RuntimeException("surface was null");
         }
@@ -259,21 +265,10 @@ final class CodecOutputSurface implements SurfaceTexture.OnFrameAvailableListene
         mSurfaceTexture.updateTexImage();
     }
 
-    /**
-     * Draws the data from SurfaceTexture onto the current EGL surface.
-     *
-     * @param invert if set, render the image with Y inverted (0,0 in top left)
-     */
-    final void drawImage(boolean invert) {
-        mTextureRender.drawFrame(mSurfaceTexture, invert);
-    }
-
-    /** Checks for EGL errors. */
-    private void checkEglError(@NonNull String msg) {
-        int error;
-        if ((error = mEgl.eglGetError()) != EGL10.EGL_SUCCESS) {
-            throw new RuntimeException(msg + ": EGL error: 0x" + Integer.toHexString(error));
-        }
+    /** Draws the data from SurfaceTexture onto the current EGL surface. */
+    final void drawImage() {
+        // if set, render the image with Y inverted (0,0 in top left)
+        mTextureRender.drawFrame(mSurfaceTexture);
     }
 
     /** {@inheritDoc} */
