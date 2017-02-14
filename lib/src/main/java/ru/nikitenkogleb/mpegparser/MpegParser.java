@@ -127,6 +127,8 @@ public final class MpegParser {
         final MediaFormat format = mediaExtractor.getTrackFormat(trackIndex);
         final int width = format.getInteger(MediaFormat.KEY_WIDTH);
         final int height = format.getInteger(MediaFormat.KEY_HEIGHT);
+        final String mime = format.getString(MediaFormat.KEY_MIME);
+        final int fps = format.getInteger(MediaFormat.KEY_FRAME_RATE);
 
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, "Video size is " + width + "x" + height);
@@ -138,14 +140,13 @@ public final class MpegParser {
             // Create a MediaCodec decoder, and configure it with the MediaFormat from the
             // extractor.  It's very important to use the format from the extractor because
             // it contains a copy of the CSD-0/CSD-1 codec-specific data chunks.
-            final String mime = format.getString(MediaFormat.KEY_MIME);
             final MediaCodec decoder = MediaCodec.createDecoderByType(mime);
             decoder.configure(format, outputSurface.mSurface, null, 0);
             decoder.start();
 
             try {
                 doExtract(mediaExtractor, trackIndex, decoder, outputSurface, encoder, width,
-                        height);
+                        height, 1000 / fps);
             } finally {
                 decoder.stop();
                 decoder.release();
@@ -182,7 +183,7 @@ public final class MpegParser {
     /** Work loop. */
     static void doExtract(@NonNull MediaExtractor extractor, int trackIndex,
             @NonNull MediaCodec decoder, @NonNull CodecOutputSurface outputSurface,
-            @NonNull FramesEncoder encoder, int width, int height) throws IOException {
+            @NonNull FramesEncoder encoder, int width, int height, int delay) throws IOException {
 
         final int TIMEOUT_USEC = 10000;
 
@@ -343,7 +344,8 @@ public final class MpegParser {
                                         GLES20.GL_UNSIGNED_BYTE, outputSurface.mPixelBuf);
                                 outputSurface.mPixelBuf.rewind();
 
-                                encoder.onFrameExtracted(decodeCount, outputSurface.mPixelBuf, width, height);
+                                encoder.onFrameExtracted(decodeCount, outputSurface.mPixelBuf,
+                                        width, height, delay);
 
                                 frameSaveTime += System.nanoTime() - startWhen;
                             }
@@ -367,7 +369,8 @@ public final class MpegParser {
     public interface FramesEncoder {
 
         /** Calls by extract frame */
-        void onFrameExtracted(int count, @NonNull ByteBuffer byteBuffer, int width, int height);
+        void onFrameExtracted(int count, @NonNull ByteBuffer byteBuffer,
+                int width, int height, int delay);
 
     }
 

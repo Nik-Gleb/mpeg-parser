@@ -86,7 +86,7 @@ public class MpegParserAndroidTest {
         /** Calls by extract frame. */
         @Override
         public final void onFrameExtracted(int index,
-                @NonNull ByteBuffer byteBuffer, int width, int height) {
+                @NonNull ByteBuffer byteBuffer, int width, int height, int delay) {
 
             //BufferedOutputStream bos = null;
             //try {
@@ -96,7 +96,7 @@ public class MpegParserAndroidTest {
                 /*bmp.compress(Bitmap.CompressFormat.PNG, 90, bos);
                 ge.encodeFrame(bmp, callsCounter * 100);*/
 
-            Log.d(TAG, "onFrameExtracted: " + bmp);
+            Log.d(TAG, "onFrameExtracted: " + bmp + " " + delay);
 
                 bmp.recycle();
             //} finally {

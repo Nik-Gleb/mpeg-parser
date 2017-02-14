@@ -199,7 +199,7 @@ public final class MainActivity extends AppCompatActivity {
         /** {@inheritDoc} */
         @Override
         public final void onFrameExtracted(int index, @NonNull ByteBuffer byteBuffer,
-                int width, int height) {
+                int width, int height, int delay) {
             final Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             bitmap.copyPixelsFromBuffer(byteBuffer);
             publishProgress(bitmap);
